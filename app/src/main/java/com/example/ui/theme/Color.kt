@@ -47,3 +47,6 @@ val BrandHupu = Color(0xFFC01F24)       // Hupu Red
 val BrandHuxiu = Color(0xFFE8541E)      // Huxiu Orange-Red
 val BrandWoshipm = Color(0xFFFF6241)    // Woshipm Coral Red
 val BrandDouban = Color(0xFF00B51E)     // Douban Green
+val BrandGcores = Color(0xFFC3222B)     // Gcores Red
+val BrandChongbuluo = Color(0xFF3498DB)  // Chongbuluo Blue
+

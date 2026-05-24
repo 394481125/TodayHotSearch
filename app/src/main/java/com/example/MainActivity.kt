@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ import com.example.data.db.HotTopicEntity
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.HotTopicViewModel
 import com.example.viewmodel.PlatformInfo
+import com.example.viewmodel.DiagnosticResult
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -73,6 +75,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HotSearchScreen(viewModel: HotTopicViewModel) {
+    val showDashboard by viewModel.showDashboard.collectAsStateWithLifecycle()
+
+    if (showDashboard) {
+        DashboardScreen(viewModel = viewModel)
+    } else {
+        HotSearchDetailScreen(viewModel = viewModel)
+    }
+}
+
+@Composable
+fun HotSearchDetailScreen(viewModel: HotTopicViewModel) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -110,6 +123,15 @@ fun HotSearchScreen(viewModel: HotTopicViewModel) {
     LaunchedEffect(visiblePlatforms) {
         if (visiblePlatforms.isNotEmpty() && visiblePlatforms.none { it.id == selectedPlatform }) {
             viewModel.setPlatform(visiblePlatforms.first().id)
+        }
+    }
+
+    // Scroll to top when selected platform changes
+    LaunchedEffect(selectedPlatform) {
+        try {
+            lazyListState.scrollToItem(0)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -152,6 +174,18 @@ fun HotSearchScreen(viewModel: HotTopicViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { viewModel.setShowDashboard(true) },
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "返回首页",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     FlameCanvasIcon(modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
@@ -220,15 +254,6 @@ fun HotSearchScreen(viewModel: HotTopicViewModel) {
                         isSelected = isSelected,
                         onClick = {
                             viewModel.setPlatform(platform.id)
-                            coroutineScope.launch {
-                                try {
-                                    if (lazyListState.layoutInfo.totalItemsCount > 0) {
-                                        lazyListState.scrollToItem(0)
-                                    }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
                         }
                     )
                 }
@@ -910,6 +935,469 @@ fun SunMoonToggle(
                     Canvas(modifier = Modifier.size(6.dp)) {
                         drawCircle(color = Color(0xFFFF4500))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardScreen(viewModel: HotTopicViewModel) {
+    val context = LocalContext.current
+    val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val isTestingAll by viewModel.isTestingAll.collectAsStateWithLifecycle()
+    val diagnosticList by viewModel.diagnosticList.collectAsStateWithLifecycle()
+    val fullPlatformList = viewModel.fullPlatformList
+
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // --- Custom Header / App Bar ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    FlameCanvasIcon(modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "热搜诊断与监测中心",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = "实时通道测速 · 数据全源监测",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    IconButton(
+                        onClick = { showSettingsDialog = true },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "通道配置",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    SunMoonToggle(
+                        isDark = isDarkMode,
+                        onToggle = { viewModel.toggleDarkMode() }
+                    )
+                }
+            }
+
+            // --- Main Content ---
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                // 1. Diagnostic Card
+                item {
+                    DiagnosticControllerCard(
+                        isTestingAll = isTestingAll,
+                        diagnosticList = diagnosticList,
+                        onStartTest = { viewModel.runSpeedTest() }
+                    )
+                }
+
+                // 2. Monitoring indicator
+                item {
+                    Text(
+                        text = "数据源监测看板 (${fullPlatformList.size} 个通道)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                }
+
+                // 3. Parallel display grid
+                val columns = 2
+                val chunkedList = fullPlatformList.chunked(columns)
+
+                items(chunkedList.size) { rowIndex ->
+                    val rowItems = chunkedList[rowIndex]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        for (platform in rowItems) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                            ) {
+                                PlatformDiagnosticCard(
+                                    platform = platform,
+                                    result = diagnosticList[platform.id],
+                                    onClick = {
+                                        viewModel.setPlatform(platform.id)
+                                        viewModel.setShowDashboard(false)
+                                    }
+                                )
+                            }
+                        }
+                        if (rowItems.size < columns) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            viewModel = viewModel,
+            onDismiss = { showSettingsDialog = false }
+        )
+    }
+}
+
+@Composable
+fun DiagnosticControllerCard(
+    isTestingAll: Boolean,
+    diagnosticList: Map<String, DiagnosticResult>,
+    onStartTest: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        ),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "一键全源诊断测速",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "实时扫描所有节点状况与接口连通率",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                Button(
+                    onClick = onStartTest,
+                    enabled = !isTestingAll,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isTestingAll) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("诊断中...", fontSize = 13.sp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "启动",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("立即测速", fontSize = 13.sp)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val total = 16
+            val successes = diagnosticList.values.count { it.status == "SUCCESS" }
+            val failures = diagnosticList.values.count { it.status == "FAILED" }
+            val completed = successes + failures
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                TelemetryStatItem(
+                    label = "总支持源",
+                    value = "$total",
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+                TelemetryStatItem(
+                    label = "通过通道",
+                    value = if (completed > 0) "🟢 $successes" else "--",
+                    color = Color(0xFF2E7D32),
+                    modifier = Modifier.weight(1f)
+                )
+                TelemetryStatItem(
+                    label = "受阻通道",
+                    value = if (completed > 0) "🔴 $failures" else "--",
+                    color = Color(0xFFC62828),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TelemetryStatItem(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun PlatformDiagnosticCard(
+    platform: PlatformInfo,
+    result: DiagnosticResult?,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.5.dp, platform.accentColor.copy(alpha = 0.45f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(platform.accentColor)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = platform.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                if (result == null) {
+                    Text(
+                        text = "未测试",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                } else {
+                    when (result.status) {
+                        "TESTING" -> {
+                            Text(
+                                text = "正在测速...",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        "SUCCESS" -> {
+                            val latencyStr = if (result.latencyMs >= 1000) {
+                                String.format("%.1fs", result.latencyMs / 1000f)
+                            } else {
+                                "${result.latencyMs}ms"
+                            }
+                            Text(
+                                text = "🟢 可用 $latencyStr",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFE8F5E9))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        "FAILED" -> {
+                            val displayErr = if (result.errorDetail.contains("403")) "403受限" else if (result.errorDetail.contains("Timeout") || result.errorDetail.contains("超时")) "超时" else "请求受阻"
+                            Text(
+                                text = "🔴 故障 ($displayErr)",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFC62828),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFFEBEE))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "数据条数: ",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (result != null) "${result.count} 条" else "-- 条",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                val timeStr = if (result != null && result.latestTime.isNotEmpty()) {
+                    try {
+                        if (result.latestTime.length >= 16) result.latestTime.substring(11, 16) else result.latestTime
+                    } catch (e: Exception) {
+                        result.latestTime
+                    }
+                } else "--"
+                Text(
+                    text = "更新 $timeStr",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            val topTopicStr = if (result != null && result.top1Topic.isNotEmpty()) {
+                result.top1Topic
+            } else {
+                "-尚未加载榜单数据-"
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "TOP1",
+                        tint = platform.accentColor,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = topTopicStr,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

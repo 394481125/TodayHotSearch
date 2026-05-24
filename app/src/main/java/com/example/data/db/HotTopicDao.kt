@@ -12,6 +12,9 @@ interface HotTopicDao {
     @Query("SELECT * FROM hot_topics WHERE platform = :platform ORDER BY rank ASC")
     fun getHotTopicsByPlatform(platform: String): Flow<List<HotTopicEntity>>
 
+    @Query("SELECT * FROM hot_topics WHERE platform = :platform ORDER BY rank ASC")
+    suspend fun getHotTopicsByPlatformOnce(platform: String): List<HotTopicEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHotTopics(topics: List<HotTopicEntity>)
 

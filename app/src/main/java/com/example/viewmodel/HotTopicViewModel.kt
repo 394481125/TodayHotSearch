@@ -27,6 +27,16 @@ data class PlatformInfo(
     val accentColor: androidx.compose.ui.graphics.Color
 )
 
+data class DiagnosticResult(
+    val platformId: String,
+    val status: String, // "IDLE" (未测试), "TESTING" (测试中), "SUCCESS" (可读取), "FAILED" (无法读取)
+    val latencyMs: Long = 0L,
+    val count: Int = 0,
+    val latestTime: String = "",
+    val top1Topic: String = "",
+    val errorDetail: String = ""
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class HotTopicViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -79,11 +89,22 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
         PlatformInfo("hupu", "虎扑步行街", BrandHupu),
         PlatformInfo("huxiu", "虎嗅网", BrandHuxiu),
         PlatformInfo("woshipm", "产品经理", BrandWoshipm),
-        PlatformInfo("douban", "豆瓣小组", BrandDouban)
+        PlatformInfo("douban", "豆瓣小组", BrandDouban),
+        PlatformInfo("gcores", "机核", BrandGcores),
+        PlatformInfo("chongbuluo", "虫部落", BrandChongbuluo)
     )
 
     private val _selectedPlatform = MutableStateFlow("wb")
     val selectedPlatform: StateFlow<String> = _selectedPlatform.asStateFlow()
+
+    private val _showDashboard = MutableStateFlow(true)
+    val showDashboard: StateFlow<Boolean> = _showDashboard.asStateFlow()
+
+    private val _diagnosticList = MutableStateFlow<Map<String, DiagnosticResult>>(emptyMap())
+    val diagnosticList: StateFlow<Map<String, DiagnosticResult>> = _diagnosticList.asStateFlow()
+
+    private val _isTestingAll = MutableStateFlow(false)
+    val isTestingAll: StateFlow<Boolean> = _isTestingAll.asStateFlow()
 
     private val _isDarkMode = MutableStateFlow(false)
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
@@ -132,21 +153,28 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
         )
 
     init {
-        // Initialise database settings for all 14 systems if empty
+        // Initialise database settings for all defined systems, adding any new ones dynamically (to support older DB migrations)
         viewModelScope.launch {
             val dao = database.hotTopicDao()
             val existing = dao.getPlatformSettingsOnce()
-            if (existing.isEmpty()) {
-                val list = fullPlatformList.mapIndexed { index, platform ->
-                    PlatformSettingEntity(
-                        id = platform.id,
-                        name = platform.name,
-                        isVisible = true,
-                        isPinned = false,
-                        sortOrder = index
+            
+            val existingIds = existing.map { it.id }.toSet()
+            val missingPlatforms = fullPlatformList.filter { it.id !in existingIds }
+            
+            if (missingPlatforms.isNotEmpty() || existing.isEmpty()) {
+                val newSettings = existing.toMutableList()
+                missingPlatforms.forEachIndexed { idx, platform ->
+                    newSettings.add(
+                        PlatformSettingEntity(
+                            id = platform.id,
+                            name = platform.name,
+                            isVisible = true,
+                            isPinned = false,
+                            sortOrder = existing.size + idx
+                        )
                     )
                 }
-                dao.savePlatformSettings(list)
+                dao.savePlatformSettings(newSettings)
             }
         }
 
@@ -243,11 +271,81 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
             try {
                 repository.fetchAndStoreHotTopics(_selectedPlatform.value)
             } catch (e: Exception) {
-                _errorMessage.value = "网络异常：数据加载失败，已为您加载本地缓存。"
+                val detail = e.localizedMessage ?: e.message ?: "连接超时"
+                _errorMessage.value = "网络异常：数据加载失败 ($detail)，已为您加载本地缓存。"
                 e.printStackTrace()
             } finally {
                 _isRefreshing.value = false
             }
+        }
+    }
+
+    fun setShowDashboard(show: Boolean) {
+        _showDashboard.value = show
+    }
+
+    private var testJob: kotlinx.coroutines.Job? = null
+
+    fun runSpeedTest() {
+        testJob?.cancel()
+        testJob = viewModelScope.launch {
+            _isTestingAll.value = true
+            
+            // Initialise map state to TESTING for all platforms
+            val initialMap = fullPlatformList.associate { info ->
+                info.id to DiagnosticResult(info.id, "TESTING")
+            }
+            _diagnosticList.value = initialMap
+
+            // Parallel testing across all 16 channels
+            val jobs = fullPlatformList.map { platform ->
+                launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val startTime = System.currentTimeMillis()
+                    try {
+                        val list = repository.testPlatformConnection(platform.id)
+                        val latency = System.currentTimeMillis() - startTime
+                        val count = list.size
+                        val updateTime = if (list.isNotEmpty()) list.first().updateTime else java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                        val topTopic = if (list.isNotEmpty()) list.first().title else "-暂无核心热点-"
+                        
+                        repository.storeCustomList(platform.id, list)
+
+                        _diagnosticList.update { current ->
+                            current + (platform.id to DiagnosticResult(
+                                platformId = platform.id,
+                                status = "SUCCESS",
+                                latencyMs = latency,
+                                count = count,
+                                latestTime = updateTime,
+                                top1Topic = topTopic
+                            ))
+                        }
+                    } catch (e: Exception) {
+                        val latency = System.currentTimeMillis() - startTime
+                        val reason = e.localizedMessage ?: e.message ?: "连接超时/墙阻断"
+                        
+                        // Load cached snapshot data in case of failure so navigation is functional
+                        val list = repository.loadOrGenerateFallback(platform.id)
+                        val updateTime = if (list.isNotEmpty()) list.first().updateTime else java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                        val topTopic = if (list.isNotEmpty()) list.first().title else "-暂无核心热点-"
+                        
+                        _diagnosticList.update { current ->
+                            current + (platform.id to DiagnosticResult(
+                                platformId = platform.id,
+                                status = "FAILED",
+                                latencyMs = latency,
+                                count = list.size,
+                                latestTime = updateTime,
+                                top1Topic = topTopic,
+                                errorDetail = reason
+                            ))
+                        }
+                    }
+                }
+            }
+
+            jobs.forEach { it.join() }
+            _isTestingAll.value = false
         }
     }
 }
