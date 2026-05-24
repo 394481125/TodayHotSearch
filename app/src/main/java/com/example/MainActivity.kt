@@ -221,7 +221,13 @@ fun HotSearchScreen(viewModel: HotTopicViewModel) {
                         onClick = {
                             viewModel.setPlatform(platform.id)
                             coroutineScope.launch {
-                                lazyListState.scrollToItem(0)
+                                try {
+                                    if (lazyListState.layoutInfo.totalItemsCount > 0) {
+                                        lazyListState.scrollToItem(0)
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
                         }
                     )
