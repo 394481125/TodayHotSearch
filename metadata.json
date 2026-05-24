@@ -1,0 +1,6 @@
+{
+  "name": "今日热搜",
+  "description": "实时聚合全网热点热搜榜单，支持分类平台切换显示、夜间模式、一键刷新与本地缓存功能。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
