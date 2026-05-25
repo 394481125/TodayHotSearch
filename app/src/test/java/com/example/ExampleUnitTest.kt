@@ -47,7 +47,7 @@ class ExampleUnitTest {
     fun testAllVvhanApis() {
         val platforms = listOf(
             "wb", "zhihu", "bilibili", "baidu", "toutiao", "douyin", "it", "36kr", "daily",
-            "thepaper", "hupu", "huxiu", "woshipm", "douban", "jike", "gcores", "chongbuluo", "cbl"
+            "thepaper", "huxiu", "woshipm", "douban", "jike", "gcores", "chongbuluo", "cbl"
         )
         for (p in platforms) {
             val url = "https://api.vvhan.com/api/hotlist?type=$p"

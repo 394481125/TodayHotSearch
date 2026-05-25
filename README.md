@@ -18,7 +18,6 @@
 *   **36氪 (36Kr)**：创业投融资、互联网趋势商业风向标
 *   **知乎日报 (Zhihu Daily)**：高品质经典日报精选文章
 *   **澎湃新闻 (The Paper)**：深度优质原创时政要闻与政经热点
-*   **虎扑步行街 (Hupu)**：知名体育及男青年生活娱乐交流社区热帖
 *   **虎嗅网 (Huxiu)**：深度前沿科技、商业洞察与社会财经热评
 *   **人人都是产品经理 (Woshipm)**：互联网产品设计、运营思维与行业深度干货
 *   **豆瓣小组 (Douban)**：文艺及生活兴趣方向的社区群组热议话题
@@ -93,7 +92,7 @@ Com.example
 ```http
 GET https://api.vvhan.com/api/hotlist?type={platform}
 ```
-*   `type` 可选值：`wb` (微博)、`zhihu` (知乎)、`baidu` (百度)、`bilibili` (B站)、`douyin` (抖音)、`toutiao` (头条)、`it` (IT之家)、`36kr` (36氪)、`daily` (知乎日报)、`thepaper` (澎湃新闻)、`hupu` (虎扑)、`huxiu` (虎嗅)、`woshipm` (人人都是产品经理)、`douban` (豆瓣)、`gcores` (机核)、`chongbuluo` (虫部落) 等。
+*   `type` 可选值：`wb` (微博)、`zhihu` (知乎)、`baidu` (百度)、`bilibili` (B站)、`douyin` (抖音)、`toutiao` (头条)、`it` (IT之家)、`36kr` (36氪)、`daily` (知乎日报)、`thepaper` (澎湃新闻)、`huxiu` (虎嗅)、`woshipm` (人人都是产品经理)、`douban` (豆瓣)、`gcores` (机核)、`chongbuluo` (虫部落) 等。
 
 ### 2. 直爬官方解析模型
 以最可靠的**微博热搜**为例：
@@ -114,3 +113,17 @@ GET https://api.vvhan.com/api/hotlist?type={platform}
     gradle :app:testDebugUnitTest
     ```
 *   如果您是在 AI Studio 中进行代码变更，只需执行 `compile_applet` 或者让 Android Incremental Build System 自动部署到浏览器端的 Streaming Emulator 即可进行实时直观的操作体验！
+
+---
+
+## 🤖 GitHub Actions 自动构建 (CI/CD)
+
+本项目已经集成了 GitHub Actions 工作流。当您将代码同步或推送到 GitHub 仓库时，GitHub 提供的云端构建节点将自动为您编译并打包 Android APK 安装文件。
+
+### 如何使用：
+
+1. **推送代码**：将本项目推送到您的 GitHub 仓库的 `main` 或 `master` 分支，或者提交针对这些分支的 Pull Request。
+2. **自动触发构建**：在 GitHub 的 **"Actions"** 选项卡下，可以实时看到进度为 `Build Android APK` 的工作流。
+3. **下载 APK 产物**：构建成功（状态变绿）后，点击进入该次运行详情页面。在底部的 **"Artifacts"** 包选项下，您可以下载已构建的 `app-debug.apk` 文件，直接安装到您的 Android 手机或模拟器进行测试。
+
+*注：您也可以在 Actions 面板手动触发该工作流编排（通过 `workflow_dispatch` 功能）。*

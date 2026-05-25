@@ -46,7 +46,6 @@ class HotTopicRepository(
                 "gcores" -> fetchGcoresDirectly()
                 "chongbuluo" -> fetchChongbuluoDirectly()
                 "thepaper" -> fetchThePaperDirectly()
-                "hupu" -> fetchHupuDirectly()
                 "huxiu" -> fetchHuxiuDirectly()
                 "woshipm" -> fetchWoshipmDirectly()
                 "douban" -> fetchDoubanDirectly()
@@ -668,41 +667,6 @@ class HotTopicRepository(
         return fetchFromRssHubMirror("/thepaper/featured", "thepaper")
     }
 
-    private fun fetchHupuDirectly(): List<HotTopicEntity> {
-        val url = "https://bbs.hupu.com/bxj"
-        val request = createBrowserRequest(url)
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw Exception("Hupu returned code ${response.code}")
-            val html = response.body?.string() ?: throw Exception("Empty Hupu body")
-            val entities = mutableListOf<HotTopicEntity>()
-            val updateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-            
-            val regex = """href="[^"']*/(\d+)\.html"[^>]*>\s*(.*?)\s*</a>""".toRegex(RegexOption.DOT_MATCHES_ALL)
-            val matches = regex.findAll(html)
-            for (match in matches) {
-                val tid = match.groupValues[1]
-                val title = match.groupValues[2].replace(Regex("<[^>]*>"), "").trim()
-                if (title.isEmpty() || title.length < 5 || title.contains("回复") || title.contains("亮了")) continue
-                val threadUrl = "https://bbs.hupu.com/$tid.html"
-                entities.add(
-                    HotTopicEntity(
-                        platform = "hupu",
-                        rank = entities.size + 1,
-                        title = title,
-                        desc = null,
-                        pic = null,
-                        hot = "步行街热帖",
-                        url = threadUrl,
-                        mobilUrl = threadUrl,
-                        updateTime = updateTime
-                    )
-                )
-                if (entities.size >= 30) break
-            }
-            return entities
-        }
-    }
-
     private fun fetchHuxiuDirectly(): List<HotTopicEntity> {
         try {
             val urls = listOf(
@@ -927,7 +891,6 @@ class HotTopicRepository(
                 "gcores" -> fetchGcoresDirectly()
                 "chongbuluo" -> fetchChongbuluoDirectly()
                 "thepaper" -> fetchThePaperDirectly()
-                "hupu" -> fetchHupuDirectly()
                 "huxiu" -> fetchHuxiuDirectly()
                 "woshipm" -> fetchWoshipmDirectly()
                 "douban" -> fetchDoubanDirectly()
@@ -966,7 +929,6 @@ class HotTopicRepository(
             "36kr" -> "https://36kr.com"
             "daily" -> "https://daily.zhihu.com"
             "thepaper" -> "https://www.thepaper.cn"
-            "hupu" -> "https://bbs.hupu.com"
             "huxiu" -> "https://www.huxiu.com"
             "woshipm" -> "https://www.woshipm.com"
             "douban" -> "https://www.douban.com"
@@ -1016,7 +978,6 @@ class HotTopicRepository(
                 "36kr" -> "商业科技"
                 "daily" -> "今日推荐"
                 "thepaper" -> "最新要闻"
-                "hupu" -> "步行街热帖"
                 "huxiu" -> "科技财经"
                 "woshipm" -> "产品思维"
                 "douban" -> "小组精选"
