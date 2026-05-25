@@ -36,4 +36,7 @@ interface HotTopicDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun savePlatformSettings(settings: List<PlatformSettingEntity>)
+
+    @Query("DELETE FROM platform_settings WHERE id = :id")
+    suspend fun deletePlatformSetting(id: String)
 }

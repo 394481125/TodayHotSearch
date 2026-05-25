@@ -76,7 +76,11 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
         PlatformInfo("douyin", "抖音", BrandDouyin),
         PlatformInfo("it", "IT之家", BrandItHome),
         PlatformInfo("36kr", "36氪", Brand36Kr),
+        PlatformInfo("daily", "知乎日报", BrandZhihuDaily),
+        PlatformInfo("thepaper", "澎湃新闻", BrandThePaper),
+        PlatformInfo("huxiu", "虎嗅网", BrandHuxiu),
         PlatformInfo("woshipm", "产品经理", BrandWoshipm),
+        PlatformInfo("douban", "豆瓣小组", BrandDouban),
         PlatformInfo("gcores", "机核", BrandGcores),
         PlatformInfo("chongbuluo", "虫部落", BrandChongbuluo)
     )
@@ -138,11 +142,16 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
             val dao = database.hotTopicDao()
             val existing = dao.getPlatformSettingsOnce()
             
-            val existingIds = existing.map { it.id }.toSet()
+            val validIds = fullPlatformList.map { it.id }.toSet()
+            val obsoletePlatforms = existing.filter { it.id !in validIds }
+            obsoletePlatforms.forEach { dao.deletePlatformSetting(it.id) }
+            
+            val activeSettings = existing.filter { it.id in validIds }
+            val existingIds = activeSettings.map { it.id }.toSet()
             val missingPlatforms = fullPlatformList.filter { it.id !in existingIds }
             
             if (missingPlatforms.isNotEmpty() || existing.isEmpty()) {
-                val newSettings = existing.toMutableList()
+                val newSettings = activeSettings.toMutableList()
                 missingPlatforms.forEachIndexed { idx, platform ->
                     newSettings.add(
                         PlatformSettingEntity(
@@ -150,7 +159,7 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
                             name = platform.name,
                             isVisible = true,
                             isPinned = false,
-                            sortOrder = existing.size + idx
+                            sortOrder = activeSettings.size + idx
                         )
                     )
                 }
