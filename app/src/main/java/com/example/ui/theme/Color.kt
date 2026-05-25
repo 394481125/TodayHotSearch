@@ -41,11 +41,7 @@ val BrandToutiao = Color(0xFFF04142)    // Toutiao Red
 val BrandDouyin = Color(0xFF25F4EE)     // Douyin Cyan
 val BrandItHome = Color(0xFF00B150)     // IT之家 Lime
 val Brand36Kr = Color(0xFF008EFB)       // 36Kr Bright Blue
-val BrandZhihuDaily = Color(0xFF00A2ED) // Zhihu Daily Light Blue
-val BrandThePaper = Color(0xFF1E1E1E)   // The Paper Charcoal Black
-val BrandHuxiu = Color(0xFFE8541E)      // Huxiu Orange-Red
 val BrandWoshipm = Color(0xFFFF6241)    // Woshipm Coral Red
-val BrandDouban = Color(0xFF00B51E)     // Douban Green
 val BrandGcores = Color(0xFFC3222B)     // Gcores Red
 val BrandChongbuluo = Color(0xFF3498DB)  // Chongbuluo Blue
 
