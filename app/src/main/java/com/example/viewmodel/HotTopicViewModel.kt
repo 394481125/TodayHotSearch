@@ -84,12 +84,8 @@ class HotTopicViewModel(application: Application) : AndroidViewModel(application
         PlatformInfo("douyin", "抖音", BrandDouyin),
         PlatformInfo("it", "IT之家", BrandItHome),
         PlatformInfo("36kr", "36氪", Brand36Kr),
-        PlatformInfo("daily", "知乎日报", BrandZhihuDaily),
-        PlatformInfo("thepaper", "澎湃新闻", BrandThePaper),
         PlatformInfo("hupu", "虎扑步行街", BrandHupu),
-        PlatformInfo("huxiu", "虎嗅网", BrandHuxiu),
         PlatformInfo("woshipm", "产品经理", BrandWoshipm),
-        PlatformInfo("douban", "豆瓣小组", BrandDouban),
         PlatformInfo("gcores", "机核", BrandGcores),
         PlatformInfo("chongbuluo", "虫部落", BrandChongbuluo)
     )

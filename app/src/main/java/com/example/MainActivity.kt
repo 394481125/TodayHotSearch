@@ -1026,6 +1026,7 @@ fun DashboardScreen(viewModel: HotTopicViewModel) {
                 item {
                     DiagnosticControllerCard(
                         isTestingAll = isTestingAll,
+                        totalSources = fullPlatformList.size,
                         diagnosticList = diagnosticList,
                         onStartTest = { viewModel.runSpeedTest() }
                     )
@@ -1089,6 +1090,7 @@ fun DashboardScreen(viewModel: HotTopicViewModel) {
 @Composable
 fun DiagnosticControllerCard(
     isTestingAll: Boolean,
+    totalSources: Int,
     diagnosticList: Map<String, DiagnosticResult>,
     onStartTest: () -> Unit
 ) {
@@ -1159,7 +1161,7 @@ fun DiagnosticControllerCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val total = 16
+            val total = totalSources
             val successes = diagnosticList.values.count { it.status == "SUCCESS" }
             val failures = diagnosticList.values.count { it.status == "FAILED" }
             val completed = successes + failures
